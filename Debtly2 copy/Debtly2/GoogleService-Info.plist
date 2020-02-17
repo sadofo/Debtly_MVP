@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>36122506781-vdds04228bdm2fglusm3dmp17dnr306l.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.36122506781-vdds04228bdm2fglusm3dmp17dnr306l</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCXpxLKbsIr9dBO26o3wuuz0zhaJ8TwkWI</string>
+	<key>GCM_SENDER_ID</key>
+	<string>36122506781</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.debtly.Debtly2</string>
+	<key>PROJECT_ID</key>
+	<string>debtly-38283</string>
+	<key>STORAGE_BUCKET</key>
+	<string>debtly-38283.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:36122506781:ios:d5156280387dc7ecba78f4</string>
+	<key>DATABASE_URL</key>
+	<string>https://debtly-38283.firebaseio.com</string>
+</dict>
+</plist>
