@@ -1,0 +1,119 @@
+# Testing to determine whether the Payment to balance ratio is a significant predictor.
+
+trans <- read.csv("C:/Users/Samuel/OneDrive - nd.edu/Debtly work/data_berka/trans.asc", sep=";")
+loan.dat <- read.csv("C:/Users/Samuel/OneDrive - nd.edu/Debtly work/data_berka/loan.asc", sep=";")
+account.dat <- read.csv("C:/Users/Samuel/OneDrive - nd.edu/Debtly work/data_berka/account.asc", sep=";")
+
+
+#install.packages('tidyverse')
+library(tidyverse)
+library(plyr)
+
+trans <- trans %>% arrange(account_id)
+loan.dat <- loan.dat %>% arrange(account_id)
+
+K_symbol <- revalue(trans$k_symbol, c('POJISTNE'= 'insur', 'SLUZBY' = 'statpay', 'UROK' = 'int', 'SIPO' = 'house', 'DUCHOD' = 'pension', 'UVER' = 'loan', 'SANKC. UROK' = 'sanction', ' ' = 'unnec')) 
+K_symbol[which(K_symbol == '')]<- "unnec"
+
+trans$k_symbol <- K_symbol
+
+### Classifies all payments
+## 0 = Essential, 1 = Sanction, 2 = Unnecessary
+# Huge assumption that any payment that was not originally classified are unnecessary. Does not take into acocunt other essentials not marked here such as gas costs.
+trans$k_symbol <- revalue(trans$k_symbol, c('insur'= 0, 'statpay' = 0, 'int' = 0, 'house' = 0, 'pension' = 0, 'loan' = 0, 'sanction' = 1, 'unnec' = 2))
+
+## Duration of the loan 
+## 12 months, 24 months, 36 months, 48 months, 60 months
+loan.dat$duration <- factor(loan.dat$duration)
+
+## Payment to Balance ratio 
+ptb <- trans$amount / trans$balance
+
+transaction.size <- vector(mode = "numeric", length = max(trans$account_id))
+
+for(i in 1:max(trans$account_id)){
+  
+  transaction.size[i] <- length(which(trans$account_id == i))
+  
+}
+
+# Averaging and taking the median of all payment to balance ratios for each account
+
+ptb_mean <- vector(mode = "numeric", length = max(trans$account_id))
+trans.importance <- vector(mode = "numeric", length = max(trans$account_id))
+
+for (i in 1:max(trans$account_id)) {
+  
+  ptb_mean[i] = mean(ptb[which(trans$account_id == i)])
+  trans.importance[i] = mean(as.numeric(trans$k_symbol)[which(trans$account_id == i)]-1)
+}
+
+## Parsing out all accounts that have not taken out a loan.
+
+loan.account <- ptb_mean[loan.dat$account_id]
+trans.account <- transaction.size[loan.dat$account_id]
+trans.importance <- trans.importance[loan.dat$account_id]
+loan.dat.1 <- cbind(loan.dat, loan.account, trans.account, trans.importance)
+
+### Reclassifying all the loan statuses
+## Assumption: All the status C loans are going to be paid without a problem
+## Assumption: All the status B and D loans are going to be default loans
+loan.dat.1$status <- revalue(loan.dat.1$status, c('A' = 0, 'B' = 1, 'C' = 0, 'D' = 1))
+
+#Now running a logistic regression model
+
+# Run the model with all variables
+mod.1 <- glm(status ~ amount + duration + payments + loan.account + trans.account + trans.importance, family = binomial, data = loan.dat.1)
+summary(mod.1)
+
+# Rerun model with only significant variables
+
+mod.2 <- glm(status ~ loan.account + trans.importance, family = binomial, data = loan.dat.1)
+summary(mod.2)
+
+# Checking interaction term
+mod.3 <- glm(status ~ loan.account + trans.importance + loan.account*trans.importance, family = binomial, data = loan.dat.1)
+summary(mod.3)
+
+# Constructing an ROC curve to test the accuracy of this model to this data.
+
+pred <- prediction(mod.3$fitted.values, loan.dat.1$status)
+perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
+perf.auc <- performance(pred, measure = 'auc')
+perf.auc@y.values
+
+plot(perf, col=rainbow(10))
+abline(a=0, b=1)
+
+#Performing the Hosmer-Lemeshow test
+library(ResourceSelection)
+hoslem.test(mod.3$y ,mod.3$fitted.values,g=10)
+# !!! Not promising !!!
+
+
+# calculating error rate
+n <- dim(as.matrix(loan.dat.1))[1]
+#For computational convenience, bind covariates into matrix
+X <- as.matrix(loan.dat.1[,c(8,10)])
+y <- loan.dat.1$status
+y.hats<-NULL
+for (i in 1:n){
+	#within each iteration of loop, remove row/observation i from X and y, i.e., create training data
+	X.train <- X[-i,]
+	y.train <- y[-i]
+	#fit logistic regression model on training data 
+	mod.train<-glm(y.train~X.train,family=binomial)
+	#Compute fitted value for ith subject and round to obtain y.hat for ith subject using training model
+	X.i <- X[i,]
+	pi.i <- plogis(c(1,X.i)%*%mod.train$coefficients)
+	yhat.i <- round(pi.i)
+	#accumulate y.hats in vector
+	y.hats <- c(y.hats,yhat.i)
+}
+
+err.rate <- length(which(loan.dat.1$status != y.hats))/n
+err.rate
+
+# Error rate is about 10%
+# Considering these are only two variables out of the many individual characteristics, I'd say these are good results.
+
